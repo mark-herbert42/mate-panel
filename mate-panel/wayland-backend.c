@@ -38,7 +38,6 @@ wayland_panel_toplevel_init (PanelToplevel* toplevel)
 	gtk_layer_init_for_window (window);
 	gtk_layer_set_layer (window, GTK_LAYER_SHELL_LAYER_TOP);
 	gtk_layer_set_namespace (window, "panel");
-	gtk_layer_auto_exclusive_zone_enable (window);
 	wayland_panel_toplevel_update_placement (toplevel);
 }
 
@@ -49,10 +48,20 @@ wayland_panel_toplevel_update_placement (PanelToplevel* toplevel)
 	gboolean expand;
 	PanelOrientation orientation;
 	gboolean anchor[GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER];
+	int x,y,x_right,y_bottom;
+	gboolean x_centered, y_centered;
+	
+	panel_toplevel_get_position(toplevel, &x,&x_right,&y,&y_bottom);
 
 	window = GTK_WINDOW (toplevel);
 	expand = panel_toplevel_get_expand (toplevel);
 	orientation = panel_toplevel_get_orientation (toplevel);
+
+	if (expand)
+			gtk_layer_auto_exclusive_zone_enable (window);
+	else
+			gtk_layer_set_exclusive_zone (window, 0);	
+
 	for (int i = 0; i < GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER; i++)
 		anchor[i] = expand;
 
@@ -60,18 +69,54 @@ wayland_panel_toplevel_update_placement (PanelToplevel* toplevel)
 	case PANEL_ORIENTATION_LEFT:
 		anchor[GTK_LAYER_SHELL_EDGE_LEFT] = TRUE;
 		anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+		if(!panel_toplevel_get_y_centered(toplevel)){
+		if(y_bottom !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+			}
+		}	
 		break;
 	case PANEL_ORIENTATION_RIGHT:
 		anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = TRUE;
 		anchor[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+		if(!panel_toplevel_get_y_centered(toplevel)){
+		if(y_bottom !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+			}
+		}	
 		break;
 	case PANEL_ORIENTATION_TOP:
 		anchor[GTK_LAYER_SHELL_EDGE_TOP] = TRUE;
 		anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+		if(!panel_toplevel_get_x_centered(toplevel)){
+		if(x_right !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+			}
+		}			
 		break;
 	case PANEL_ORIENTATION_BOTTOM:
 		anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = TRUE;
 		anchor[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+		if(!panel_toplevel_get_x_centered(toplevel)){
+		if(x_right !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+			}
+		}			
 		break;
 	default:
 		g_warning ("Invalid panel orientation %d", orientation);
