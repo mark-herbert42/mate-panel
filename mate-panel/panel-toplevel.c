@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2003 Sun Microsystems, Inc.
  * Copyright (C) 2004 Rob Adams
+ * Copyright (C) 2019 William Wold
  * Copyright (C) 2012-2021 MATE Developers
  *
  * This program is free software; you can redistribute it and/or
@@ -23,6 +24,11 @@
  *
  * Authors:
  *	Mark McLoughlin <mark@skynet.ie>
+ * 
+ * Support for running on Wayland compositors
+ * Authors:
+ *	William Wold <wm@wmww.sh>
+ * 
  */
 
 #include <config.h>
@@ -60,6 +66,7 @@
 #endif
 #ifdef HAVE_WAYLAND
 #include "wayland-backend.h"
+#include <gtk-layer-shell.h>
 #endif
 #ifndef HAVE_X11
 #define GDK_IS_X11_DISPLAY(object)        !(G_TYPE_CHECK_INSTANCE_TYPE ((object), GDK_TYPE_WAYLAND_DISPLAY))
@@ -5654,3 +5661,95 @@ panel_toplevel_get_maximum_size (PanelToplevel *toplevel)
 	else
 		return monitor_geom.width / MAXIMUM_SIZE_SCREEN_RATIO;
 }
+
+#ifdef HAVE_WAYLAND
+void
+wayland_panel_toplevel_init (PanelToplevel* toplevel)
+{
+	GtkWindow* window;
+
+	window = GTK_WINDOW (toplevel);
+	gtk_layer_init_for_window (window);
+	gtk_layer_set_layer (window, GTK_LAYER_SHELL_LAYER_TOP);
+	gtk_layer_set_namespace (window, "panel");
+	wayland_panel_toplevel_update_placement (toplevel);
+}
+
+void
+wayland_panel_toplevel_update_placement (PanelToplevel* toplevel)
+{
+	GtkWindow* window;
+	gboolean anchor[GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER];
+
+	window = GTK_WINDOW (toplevel);
+
+	if (toplevel->priv->expand)
+			gtk_layer_auto_exclusive_zone_enable (window);
+	else
+			gtk_layer_set_exclusive_zone (window, 0);	
+
+	for (int i = 0; i < GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER; i++)
+		anchor[i] = toplevel->priv->expand;
+
+	switch (toplevel->priv->orientation) {
+	case PANEL_ORIENTATION_LEFT:
+		anchor[GTK_LAYER_SHELL_EDGE_LEFT] = TRUE;
+		anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+		if(!toplevel->priv->y_centered){
+		if(toplevel->priv->y_bottom !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+			}
+		}	
+		break;
+	case PANEL_ORIENTATION_RIGHT:
+		anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = TRUE;
+		anchor[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+		if(!toplevel->priv->y_centered){
+		if(toplevel->priv->y_bottom !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_TOP] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+			}
+		}	
+		break;
+	case PANEL_ORIENTATION_TOP:
+		anchor[GTK_LAYER_SHELL_EDGE_TOP] = TRUE;
+		anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+		if(!toplevel->priv->x_centered){
+		if(toplevel->priv->x_right !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+			}
+		}			
+		break;
+	case PANEL_ORIENTATION_BOTTOM:
+		anchor[GTK_LAYER_SHELL_EDGE_BOTTOM] = TRUE;
+		anchor[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+		if(!toplevel->priv->x_centered){
+		if(toplevel->priv->x_right !=-1) {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = TRUE;
+						}	else {
+				anchor[GTK_LAYER_SHELL_EDGE_LEFT] = TRUE;
+				anchor[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+			}
+		}			
+		break;
+	default:
+		g_warning ("Invalid panel orientation %d", toplevel->priv->orientation);
+	}
+
+	for (int i = 0; i < GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER; i++)
+		gtk_layer_set_anchor (window, i, anchor[i]);
+}
+
+#endif

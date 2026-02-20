@@ -61,11 +61,6 @@ panel_sources = \
 	panel-applet-info.c \
 	panel-reset.c
 
-if ENABLE_WAYLAND
-panel_sources += \
-	wayland-backend.c
-endif
-
 if ENABLE_X11
 panel_sources += \
 	xstuff.c \
